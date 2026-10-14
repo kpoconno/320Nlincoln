@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1b0f11">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
+<title>320 N Lincoln</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen portrait game. HUD strip on top, checkered basement floor (canvas) in the middle, the bar shelf of drinks at the bottom. Single committed dark look: a basement lit by one red bulb. */
+:root{
+  --bg:#1b0f11;
+  --panel:#2a171a;
+  --panel-2:#371e21;
+  --line:#4a2a2e;
+  --ink:#f7eadc;
+  --muted:#c4a597;
+  --amber:#f4a93a;
+  --cup:#b0151f;
+  --cream:#f3e7d3;
+  --lite:#7cc0ff;
+  --seltzer:#ff8fc2;
+  --water:#c4ecff;
+  --calm:#7fd48f;
+  --warn:#f4a93a;
+  --mad:#ff4b3e;
+  --display:"Bungee","Impact","Arial Black",sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --num:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);overscroll-behavior:none;overflow:hidden}
+#app{
+  position:relative;height:100%;max-width:540px;margin:0 auto;
+  display:flex;flex-direction:column;gap:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:10px;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;
+}
+/* HUD */
+.hud{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:10px}
+.vibe{display:flex;flex-direction:column;gap:4px;min-width:0}
+.label{font-family:var(--num);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.bar{height:10px;border-radius:6px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;width:100%;background:var(--calm);transition:width .25s,background-color .25s}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+.stat b{font-family:var(--num);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
+.stat .label{font-size:11px}
+.iconbtn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;width:36px;height:36px;font-family:var(--num);font-weight:700;font-size:13px;cursor:pointer}
+.iconbtn:focus-visible,.drink:focus-visible,.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* Floor */
+.floor{position:relative;flex:1;min-height:0;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--panel)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+/* Bar shelf */
+.shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.drink{
+  appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:12px;border:2px solid var(--line);
+  background:var(--panel);color:var(--ink);text-align:left;min-width:0;
+  transition:border-color .15s,transform .1s,background-color .15s;
+}
+.drink[aria-pressed="true"]{border-color:var(--amber);background:var(--panel-2)}
+.drink:active{transform:scale(.97)}
+.drink.empty{opacity:.45}
+.drink .can{flex:none;width:16px;height:26px;border-radius:4px;position:relative;box-shadow:inset -3px 0 0 rgba(0,0,0,.18)}
+.drink .can::after{content:"";position:absolute;left:0;right:0;top:9px;height:6px;background:rgba(255,255,255,.75)}
+.drink .can.w{width:12px;border-radius:5px 5px 4px 4px;opacity:.9}
+.drink .can.w::after{top:-4px;left:3px;right:3px;height:5px;border-radius:2px;background:var(--lite)}
+.drink .meta{display:flex;flex-direction:column;line-height:1.05;min-width:0}
+.drink .name{font-family:var(--num);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.drink .count{font-family:var(--num);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
+.drink .key{margin-left:auto;font-family:var(--num);font-size:11px;color:var(--muted);opacity:.7}
+@media (hover:none){.drink .key{display:none}}
+/* Overlay */
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));background:rgba(20,8,10,.82);backdrop-filter:blur(3px);z-index:5;overflow-y:auto}
+.card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow-y:auto}
+.plaque{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.plaque .num{font-family:var(--display);font-size:clamp(46px,14vw,64px);line-height:.9;color:var(--cream);text-shadow:0 4px 0 var(--cup)}
+.plaque .city{flex-basis:100%;font-family:var(--num);font-weight:600;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.plaque .st{font-family:var(--display);font-size:clamp(20px,6vw,26px);line-height:1}
+h2{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.05;margin:0;text-wrap:balance}
+p{margin:0;line-height:1.45;color:var(--ink)}
+.sub{color:var(--muted);font-size:14px}
+.how{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:14.5px}
+.how li{display:flex;gap:8px;line-height:1.35}
+.how li b{font-family:var(--num);color:var(--amber);font-size:15px;min-width:1.2em}
+.roster{display:grid;gap:6px}
+.who{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;font-size:14px;line-height:1.3}
+.puck{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:13px;color:#1b0f11}
+.who strong{font-weight:700}
+.who span{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stats div{background:var(--panel-2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.stats b{font-family:var(--num);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.note{background:var(--panel-2);border-left:3px solid var(--cup);padding:10px 12px;border-radius:6px;font-size:14px;line-height:1.4}
+.btn{appearance:none;border:0;cursor:pointer;border-radius:12px;padding:14px 18px;font-family:var(--display);font-size:18px;letter-spacing:.02em;background:var(--cream);color:var(--cup);box-shadow:0 4px 0 var(--cup)}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--cup)}
+.best{font-family:var(--num);font-size:14px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+@media (max-height:640px){.card{padding:16px;gap:10px}.how{font-size:13.5px}.roster{gap:4px}}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="vibe">
+      <span class="label">Party vibe</span>
+      <div class="bar" aria-hidden="true"><i id="vibeFill"></i></div>
+    </div>
+    <div class="stat"><b id="tips">$0</b><span class="label">Tips</span></div>
+    <div class="stat"><b id="clock">0:40</b><span class="label" id="waveLbl">Wave 1/5</span></div>
+    <button class="iconbtn" id="mute" aria-label="Toggle sound">SND</button>
+  </div>
+
+  <div class="floor"><canvas id="field" aria-label="Party floor. Swipe up to throw the selected drink."></canvas></div>
+
+  <div class="shelf" role="group" aria-label="Drinks in the cooler">
+    <button class="drink" id="d-beer" data-drink="beer" aria-pressed="true">
+      <span class="can" style="background:var(--lite)"></span>
+      <span class="meta"><span class="name">Light</span><span class="count" id="c-beer">18</span></span><span class="key">1</span>
+    </button>
+    <button class="drink" id="d-seltzer" data-drink="seltzer" aria-pressed="false">
+      <span class="can" style="background:var(--seltzer)"></span>
+      <span class="meta"><span class="name">Seltzer</span><span class="count" id="c-seltzer">6</span></span><span class="key">2</span>
+    </button>
+    <button class="drink" id="d-water" data-drink="water" aria-pressed="false">
+      <span class="can w" style="background:var(--water)"></span>
+      <span class="meta"><span class="name">Water</span><span class="count" id="c-water">∞</span></span><span class="key">3</span>
+    </button>
+  </div>
+
+  <div class="overlay" id="overlay"></div>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const cv = $('#field'), ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const css = getComputedStyle(document.documentElement);
+  const C = n => css.getPropertyValue('--' + n).trim();
+  const COL = {
+    ink:C('ink'), muted:C('muted'), amber:C('amber'), cup:C('cup'), lite:C('lite'), seltzer:C('seltzer'),
+    water:C('water'), calm:C('calm'), warn:C('warn'), mad:C('mad'), bg:C('bg'), panel:C('panel'), line:C('line')
+  };
+  const FONT_D = '"Bungee","Impact","Arial Black",sans-serif';
+  const FONT_N = '"Barlow Condensed","Arial Narrow",system-ui,sans-serif';
+
+  let W = 0, H = 0, S = 1, DPR = 1;
+  function resize(){
+    const r = cv.getBoundingClientRect();
+    W = r.width; H = r.height; DPR = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.max(1, Math.round(W * DPR)); cv.height = Math.max(1, Math.round(H * DPR));
+    S = Math.max(.72, Math.min(1.3, Math.min(W / 380, H / 600)));
+  }
+  new ResizeObserver(resize).observe(cv); resize();
+
+  /* ---------- Data ---------- */
+  const DRINK = {
+    beer:{name:'Light', color:COL.lite},
+    seltzer:{name:'Seltzer', color:COL.seltzer},
+    water:{name:'Water', color:COL.water}
+  };
+  const ROSTER = [
+    {id:'zan', name:'Zan', shirt:'#4fb3a9', pat:9, tip:3, storm:15, want:() => 'beer',
+      blurb:'Light beer, every time. The baseline.', gone:'Zan went looking for a better party.'},
+    {id:'arshan', name:'Arshan', shirt:'#c58cf2', pat:10, tip:4, storm:15, wander:true,
+      want:() => Math.random() < .7 ? 'seltzer' : 'beer',
+      blurb:'Mostly seltzer. Never stands still, so lead your throw.', gone:'Arshan left with the seltzer crowd.'},
+    {id:'rick', name:'Rick', shirt:'#f4a93a', pat:6, tip:7, storm:15, want:() => 'beer',
+      blurb:'Short fuse, best tipper in the house.', gone:'Rick is telling the actives about you.'},
+    {id:'fowler', name:'Fowler', shirt:'#6f9cff', pat:9, tip:4, storm:15,
+      want:g => g.drunk >= 3 ? 'water' : 'beer',
+      blurb:'After three beers he needs water. Ignore that at your own risk.', gone:'Fowler wandered off.'},
+    {id:'mitchell', name:'Mitchell', shirt:'#ff4b3e', pat:6.5, tip:2, storm:25, mad:true, startFrac:.6, contagion:2,
+      want:() => Math.random() < .6 ? 'beer' : 'seltzer',
+      blurb:'Already furious. His yelling makes everyone near him angrier.', gone:'MITCHELL STORMED OFF.'},
+    {id:'mark', name:'Mark', shirt:'#9fd36a', pat:11, tip:1, storm:10, sway:true, want:() => 'water', calm:3,
+      blurb:'Has had way too much. Water only, and he will not stand still. Give him a beer and he climbs the pong table.', gone:'Mark passed out on the couch.'},
+    {id:'greg', name:'Greg', shirt:'#e9dcc4', pat:14, tip:1, storm:12, slow:3,
+      want:g => g.hadBeer ? 'water' : 'beer',
+      blurb:'One beer a night. Nail that one and he tips like it is graduation. A second beer insults him.', gone:'Greg went home. It is a school night for Greg.'}
+  ];
+  const SLOTS = [[.15,.13],[.5,.1],[.85,.14],[.27,.31],[.73,.3],[.13,.48],[.5,.46],[.87,.49],[.3,.63],[.72,.64]];
+  const START_SLOTS = {zan:0, arshan:2, rick:3, fowler:4, mitchell:6, mark:9, greg:1};
+  const WAVES = [
+    {dur:40, max:2, every:3.2, pat:1.00, restock:{beer:14, seltzer:4}, clock:'10:00 PM',
+      intro:'Pregame. Light crowd. Find your arm before the house fills up.'},
+    {dur:45, max:3, every:2.6, pat:.92, restock:{beer:7, seltzer:3}, clock:'11:15 PM',
+      intro:'Half of Memorial Stadium just walked in the front door.'},
+    {dur:45, max:4, every:2.3, pat:.86, restock:{beer:16, seltzer:4}, clock:'12:30 AM',
+      intro:'The keg kicked. You only got half a restock. Do not waste cans.'},
+    {dur:50, max:4, every:2.0, pat:.80, restock:{beer:18, seltzer:5}, cops:{at:22, dur:6}, clock:'1:15 AM',
+      intro:'Noise complaint. When Bloomington PD knocks, stop throwing.'},
+    {dur:55, max:6, every:1.5, pat:.72, angry:1.6, clock:'1:45 AM',
+      intro:'The Kirkwood bars just let out and everyone came here. Mitchell found out who drank his last beer.'}
+  ];
+  const START_STOCK = {beer:18, seltzer:6};
+
+  /* ---------- State ---------- */
+  let G;
+  function newGame(){
+    G = {
+      state:'menu', wave:0, time:0, vibe:100, tips:0, combo:0, bestCombo:0,
+      stock:{...START_STOCK, water:Infinity}, sel:'beer',
+      guests:[], cans:[], texts:[], puddles:[], banner:null, spawnT:1.2, cops:null, copsDone:false, hint:true,
+      stats:{throws:0, served:0, perfect:0, wrong:0, misses:0, storms:0},
+      waveStats:null, shake:0, t:0
+    };
+    G.guests = ROSTER.map(d => {
+      const si = START_SLOTS[d.id], s = SLOTS[si];
+      return {...d, slot:si, x:s[0], y:s[1], tx:s[0], ty:s[1], req:null,
+        cool:1 + Math.random()*2, gone:0, drunk:0, rowdy:0, hadBeer:false, wanderT:4 + Math.random()*3, bob:Math.random()*6};
+    });
+    updateShelf(); updateHud();
+  }
+
+  /* ---------- Audio ---------- */
+  let AC = null, muted = false;
+  try { muted = localStorage.getItem('n320-muted') === '1'; } catch(e){}
+  $('#mute').textContent = muted ? 'OFF' : 'SND';
+  function audioInit(){ if(!AC){ try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} } if(AC && AC.state === 'suspended') AC.resume(); }
+  function tone(f, d, type='sine', v=.07, slide=0, delay=0){
+    if(muted || !AC) return;
+    const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .03);
+  }
+  const sfx = {
+    throw:() => tone(520, .09, 'triangle', .05, -260),
+    catch:() => { tone(880, .08, 'sine', .06); tone(1320, .1, 'sine', .05, 0, .05); },
+    perfect:() => { tone(880, .07); tone(1175, .07, 'sine', .06, 0, .05); tone(1760, .12, 'sine', .05, 0, .1); },
+    miss:() => tone(160, .14, 'square', .04, -60),
+    wrong:() => tone(220, .2, 'sawtooth', .05, -80),
+    storm:() => { tone(110, .35, 'sawtooth', .06, -40); },
+    siren:() => { tone(700, .25, 'square', .03, 300); tone(1000, .25, 'square', .03, -300, .25); },
+    empty:() => tone(120, .1, 'square', .04)
+  };
+  $('#mute').addEventListener('click', () => {
+    muted = !muted; $('#mute').textContent = muted ? 'OFF' : 'SND';
+    try { localStorage.setItem('n320-muted', muted ? '1' : '0'); } catch(e){}
+    audioInit();
+  });
+
+  /* ---------- Helpers ---------- */
+  const rand = (a,b) => a + Math.random()*(b-a);
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const pim = () => ({x:W/2, y:H - 50*S});
+  const gpos = g => g.sway
+    ? {x:(g.x + Math.sin(G.t*1.25 + g.bob)*.07)*W, y:(g.y + Math.sin(G.t*.8 + g.bob)*.025)*H}
+    : {x:g.x*W, y:g.y*H};
+  const frac = g => g.req ? g.req.t / g.req.max : 1;
+  const stage = g => { const f = frac(g); return f > .6 ? 0 : f > .3 ? 1 : 2; };
+  function say(x, y, text, color=COL.ink, big=false){ G.texts.push({x, y, text, color, t:0, big}); }
+  function banner(text, sub='', dur=2.6){ G.banner = {text, sub, t:0, dur}; }
+  function addVibe(v){ G.vibe = clamp(G.vibe + v, 0, 100); }
+
+  /* ---------- Shelf / HUD ---------- */
+  function updateShelf(){
+    for(const k of ['beer','seltzer','water']){
+      const el = $('#d-' + k);
+      el.setAttribute('aria-pressed', G.sel === k ? 'true' : 'false');
+      el.classList.toggle('empty', G.stock[k] <= 0);
+      $('#c-' + k).textContent = G.stock[k] === Infinity ? '∞' : G.stock[k];
+    }
+  }
+  function updateHud(){
+    const f = $('#vibeFill');
+    f.style.width = G.vibe + '%';
+    f.style.backgroundColor = G.vibe > 60 ? COL.calm : G.vibe > 30 ? COL.warn : COL.mad;
+    $('#tips').textContent = '$' + G.tips;
+    const t = Math.max(0, Math.ceil(G.time));
+    $('#clock').textContent = Math.floor(t/60) + ':' + String(t%60).padStart(2,'0');
+    $('#waveLbl').textContent = 'Wave ' + (G.wave + 1) + '/' + WAVES.length;
+  }
+  function select(k){ G.sel = k; updateShelf(); tone(660, .04, 'triangle', .03); }
+  document.querySelectorAll('.drink').forEach(b => b.addEventListener('click', () => { audioInit(); select(b.dataset.drink); }));
+  addEventListener('keydown', e => {
+    if(e.key === '1') select('beer'); else if(e.key === '2') select('seltzer'); else if(e.key === '3') select('water');
+  });
+
+  /* ---------- Overlay screens ---------- */
+  const ov = $('#overlay');
+  function best(){ try { return +localStorage.getItem('n320-best') || 0; } catch(e){ return 0; } }
+  function setBest(v){ try { if(v > best()) localStorage.setItem('n320-best', v); } catch(e){} }
+  function rosterHtml(){
+    return ROSTER.map(r => `<div class="who"><div class="puck" style="background:${r.shirt}">${r.name[0]}</div><div><strong>${r.name}.</strong> <span>${r.blurb}</span></div></div>`).join('');
+  }
+  function showMenu(){
+    G.state = 'menu';
+    const b = best();
+    ov.innerHTML = `<div class="card">
+      <div class="plaque"><span class="num">320</span><span class="st">N&nbsp;Lincoln&nbsp;St</span><span class="city">Bloomington, Indiana</span></div>
+      <p class="sub">Bloomington, Indiana. Pledge Week, Night 1. Pimmel is on drinks from pregame until the Kirkwood bars let out. Keep the party alive until 2 a.m.</p>
+      <ul class="how">
+        <li><b>1</b><span>Pick a drink from the cooler below.</span></li>
+        <li><b>2</b><span>Swipe up from anywhere on the floor to throw it. Longer swipe, farther throw.</span></li>
+        <li><b>3</b><span>Land it in the ring. Center of the ring is a perfect toss and a bigger tip.</span></li>
+        <li><b>4</b><span>Misses cost cans. Storm-offs cost vibe. Vibe hits zero and you get dropped.</span></li>
+      </ul>
+      <div class="roster">${rosterHtml()}</div>
+      ${b ? `<div class="best">Best night: $${b}</div>` : ''}
+      <button class="btn" id="go">Open the doors</button>
+    </div>`;
+    ov.hidden = false;
+    $('#go').addEventListener('click', () => { audioInit(); startWave(0); });
+  }
+  function startWave(i){
+    G.wave = i; const w = WAVES[i];
+    G.time = w.dur; G.spawnT = 1.4; G.cops = null; G.copsDone = false;
+    G.cans = []; G.puddles = [];
+    G.waveStats = {served:0, perfect:0, misses:0, storms:0, tips:0};
+    for(const g of G.guests){ g.req = null; g.gone = 0; g.rowdy = 0; g.cool = rand(.5, 2.5) * (g.slow ? 2 : 1); }
+    G.state = 'play'; ov.hidden = true; ov.innerHTML = '';
+    banner(w.clock, w.intro, 3.6);
+    updateShelf(); updateHud();
+  }
+  function endWave(){
+    const w = WAVES[G.wave];
+    for(const g of G.guests) g.req = null;
+    G.cans = [];
+    if(G.wave === WAVES.length - 1) return win();
+    G.state = 'break';
+    const rs = w.restock;
+    G.stock.beer += rs.beer; G.stock.seltzer += rs.seltzer;
+    addVibe(10); updateShelf(); updateHud();
+    const nx = WAVES[G.wave + 1];
+    const ws = G.waveStats;
+    ov.innerHTML = `<div class="card">
+      <span class="label">${w.clock} · Wave ${G.wave+1} of ${WAVES.length} survived</span>
+      <h2>${ws.storms === 0 ? 'Nobody stormed off. Suspicious.' : ws.storms > 2 ? 'Rough wave, pledge.' : 'Still standing.'}</h2>
+      <div class="stats">
+        <div><span class="label">Served</span><b>${ws.served}</b></div>
+        <div><span class="label">Perfect</span><b>${ws.perfect}</b></div>
+        <div><span class="label">Cans wasted</span><b>${ws.misses}</b></div>
+        <div><span class="label">Tips this wave</span><b>$${ws.tips}</b></div>
+      </div>
+      <p class="sub">${G.wave === 1 ? 'The keg kicked. A brother made a half-hearted liquor store run' : 'A brother made a liquor store run'}: +${rs.beer} Light, +${rs.seltzer} Seltzer. Vibe +10.</p>
+      <div class="note"><strong>${nx.clock}:</strong> ${nx.intro}</div>
+      <button class="btn" id="go">Wave ${G.wave+2}</button>
+    </div>`;
+    ov.hidden = false;
+    $('#go').addEventListener('click', () => startWave(G.wave + 1));
+  }
+  function finalStats(){
+    const s = G.stats, acc = s.throws ? Math.round(100 * s.served / s.throws) : 0;
+    return `<div class="stats">
+      <div><span class="label">Tips</span><b>$${G.tips}</b></div>
+      <div><span class="label">Accuracy</span><b>${acc}%</b></div>
+      <div><span class="label">Perfect tosses</span><b>${s.perfect}</b></div>
+      <div><span class="label">Best streak</span><b>${G.bestCombo}</b></div>
+    </div>`;
+  }
+  function win(){
+    G.state = 'over'; setBest(G.tips);
+    ov.innerHTML = `<div class="card">
+      <span class="label">2:00 AM · 320 N Lincoln St · Bloomington</span>
+      <h2>Night 1 survived. Pimmel lives to pledge another day.</h2>
+      ${finalStats()}
+      <p class="sub">${G.stats.storms === 0 ? 'Not one storm-off. The actives are concerned you might be competent.' : 'Mitchell is still mad. Mark is asleep on the couch. Greg left at 11. Normal night on Lincoln.'}</p>
+      <button class="btn" id="go">Run it back</button>
+    </div>`;
+    ov.hidden = false;
+    $('#go').addEventListener('click', () => { newGame(); startWave(0); });
+  }
+  function lose(){
+    G.state = 'over'; setBest(G.tips); sfx.storm();
+    ov.innerHTML = `<div class="card">
+      <span class="label">Wave ${G.wave+1} · The party died</span>
+      <h2>Pimmel got dropped.</h2>
+      ${finalStats()}
+      <p class="sub">${G.stock.beer <= 0 ? 'You ran the cooler dry. Accuracy is a resource.' : 'Watch the yellers. Anger spreads to whoever is standing next to them.'}</p>
+      <button class="btn" id="go">Beg for another chance</button>
+    </div>`;
+    ov.hidden = false;
+    $('#go').addEventListener('click', () => { newGame(); startWave(0); });
+  }
+
+  /* ---------- Input ---------- */
+  let drag = null;
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('pointerdown', e => {
+    if(G.state !== 'play') return;
+    audioInit();
+    const r = cv.getBoundingClientRect();
+    drag = {id:e.pointerId, x0:e.clientX - r.left, y0:e.clientY - r.top, x:e.clientX - r.left, y:e.clientY - r.top};
+    try { cv.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  cv.addEventListener('pointermove', e => {
+    if(!drag || e.pointerId !== drag.id) return;
+    const r = cv.getBoundingClientRect();
+    drag.x = e.clientX - r.left; drag.y = e.clientY - r.top;
+  });
+  const endDrag = e => {
+    if(!drag || e.pointerId !== drag.id) return;
+    const a = aimOf(drag); drag = null;
+    if(a && G.state === 'play') throwCan(a);
+  };
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', () => { drag = null; });
+
+  const K = 3.0;            // friction constant
+  const POWER = 2.15;       // swipe length -> travel distance
+  function aimOf(d){
+    const dx = d.x - d.x0, dy = d.y - d.y0, len = Math.hypot(dx, dy);
+    if(len < 24 || dy > -8) return null;
+    const dist = Math.min(len * POWER, H * 1.1);
+    return {ux:dx/len, uy:dy/len, dist};
+  }
+  function throwCan(a){
+    const k = G.sel;
+    if(G.stock[k] <= 0){ const p = pim(); say(p.x, p.y - 40*S, 'Out of ' + DRINK[k].name, COL.mad); sfx.empty(); return; }
+    if(G.stock[k] !== Infinity) G.stock[k]--;
+    const p = pim(), v = a.dist * K;
+    G.cans.push({x:p.x, y:p.y - 14*S, vx:a.ux*v, vy:a.uy*v, drink:k, rot:0, spin:rand(-9,9), state:'fly', life:0});
+    G.stats.throws++; G.hint = false; sfx.throw(); updateShelf();
+    if(G.cops){ addVibe(-12); say(p.x, p.y - 60*S, 'COPS SAW THAT  −12', COL.mad, true); sfx.wrong(); G.shake = .3; }
+  }
+
+  /* ---------- Simulation ---------- */
+  function spawn(){
+    const w = WAVES[G.wave];
+    const active = G.guests.filter(g => g.req).length;
+    if(active >= w.max) return;
+    const idle = G.guests.filter(g => !g.req && g.gone <= 0 && g.cool <= 0);
+    if(!idle.length) return;
+    // Mitchell pushes in more often late in the night
+    const g = (w.angry && Math.random() < .35 && idle.find(x => x.mad)) || pick(idle);
+    const max = g.pat * w.pat * (G.wave === 0 ? 1.15 : 1);
+    g.req = {drink:g.want(g), max, t:max * (g.startFrac || 1)};
+  }
+  function moveGuest(g){
+    const used = new Set(G.guests.filter(o => o !== g).map(o => o.slot));
+    const free = SLOTS.map((_, i) => i).filter(i => !used.has(i) && i !== g.slot);
+    if(!free.length) return;
+    g.slot = pick(free); g.tx = SLOTS[g.slot][0]; g.ty = SLOTS[g.slot][1];
+  }
+  function catchR(){ return 34 * S; }
+  function perfectR(){ return 12 * S; }
+
+  function tryCatch(c, r){
+    let best = null, bd = r;
+    for(const g of G.guests){
+      if(!g.req || g.gone > 0) continue;
+      const p = gpos(g), d = Math.hypot(c.x - p.x, c.y - p.y);
+      if(d < bd){ bd = d; best = g; }
+    }
+    return best ? {g:best, d:bd} : null;
+  }
+  function resolve(g, c, d){
+    const p = gpos(g), want = g.req.drink;
+    if(c.drink !== want){
+      if(g.id === 'fowler' && want === 'water' && c.drink === 'beer'){
+        const pp = pim();
+        G.puddles.push({x:p.x + (pp.x - p.x)*.38, y:p.y + (pp.y - p.y)*.38, r:24*S, t:0});
+        g.req = null; g.gone = 9; g.drunk = 0;
+        addVibe(-12); G.combo = 0; G.stats.wrong++;
+        say(p.x, p.y - 30*S, 'Fowler is DOWN  −12', COL.mad, true); sfx.storm(); G.shake = .4;
+        return;
+      }
+      if(g.id === 'mark' && c.drink !== 'water'){
+        g.req = null; g.cool = rand(5, 8); g.rowdy = 7;
+        addVibe(-10); G.combo = 0; G.stats.wrong++;
+        say(p.x, p.y - 30*S, 'Mark is on the pong table  −10', COL.mad, true); sfx.wrong(); G.shake = .35;
+        return;
+      }
+      g.req.t -= g.req.max * .35;
+      addVibe(-6); G.combo = 0; G.stats.wrong++;
+      const msg = g.id === 'greg' && c.drink === 'beer' ? 'Greg only drinks one  −6' : 'Wrong drink  −6';
+      say(p.x, p.y - 34*S, msg, COL.mad); sfx.wrong();
+      return;
+    }
+    const perfect = d <= perfectR();
+    G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo);
+    const mult = 1 + Math.min(G.combo - 1, 8) * .25;
+    const base = g.id === 'greg' && c.drink === 'beer' ? 10 : g.tip;
+    const tip = Math.round(base * (perfect ? 1.5 : 1) * mult);
+    G.tips += tip; G.waveStats.tips += tip;
+    addVibe((perfect ? 4 : 2) + (g.mad ? 3 : 0) + (g.calm || 0));
+    if(g.id === 'greg' && c.drink === 'beer') g.hadBeer = true;
+    G.stats.served++; G.waveStats.served++;
+    if(perfect){ G.stats.perfect++; G.waveStats.perfect++; }
+    if(g.id === 'fowler'){ if(c.drink === 'beer') g.drunk++; else if(c.drink === 'water') g.drunk = 0; }
+    g.req = null; g.cool = rand(1.5, 4) * (g.slow || 1);
+    const label = (perfect ? 'PERFECT  ' : '') + '+$' + tip + (G.combo > 2 ? '  x' + G.combo : '');
+    say(p.x, p.y - 34*S, label, perfect ? COL.amber : COL.calm, perfect);
+    (perfect ? sfx.perfect : sfx.catch)();
+  }
+  function miss(c){
+    c.state = 'floor'; c.life = 0;
+    addVibe(-2); G.combo = 0; G.stats.misses++; G.waveStats.misses++;
+    say(c.x, c.y - 16*S, 'Wasted', COL.muted); sfx.miss();
+  }
+
+  function update(dt){
+    G.t += dt;
+    for(const t of G.texts) t.t += dt;
+    G.texts = G.texts.filter(t => t.t < 1.3);
+    if(G.banner){ G.banner.t += dt; if(G.banner.t > G.banner.dur) G.banner = null; }
+    G.shake = Math.max(0, G.shake - dt);
+    for(const g of G.guests){ g.x += (g.tx - g.x) * Math.min(1, dt*2.2); g.y += (g.ty - g.y) * Math.min(1, dt*2.2); }
+    if(G.state !== 'play') return;
+
+    const w = WAVES[G.wave];
+    G.time -= dt;
+
+    // cops event
+    if(w.cops && !G.copsDone && !G.cops && (w.dur - G.time) >= w.cops.at){
+      G.cops = {t:w.cops.dur}; banner('COPS AT THE DOOR', 'Hold your throws until they leave', w.cops.dur); sfx.siren();
+    }
+    if(G.cops){
+      G.cops.t -= dt;
+      if(Math.floor((G.cops.t + dt) * 2) !== Math.floor(G.cops.t * 2) && G.cops.t > 0) sfx.siren();
+      if(G.cops.t <= 0){ G.cops = null; G.copsDone = true; banner('All clear', 'Party back on', 1.4); }
+    }
+
+    // spawning
+    G.spawnT -= dt;
+    if(G.spawnT <= 0 && G.time > 2){ spawn(); G.spawnT = w.every * rand(.6, 1.2); }
+
+    // guests
+    for(const g of G.guests){
+      if(g.gone > 0){ g.gone -= dt; continue; }
+      if(g.rowdy > 0) g.rowdy -= dt;
+      if(!g.req && g.rowdy <= 0){ g.cool -= dt; }
+      if(g.wander){ g.wanderT -= dt; if(g.wanderT <= 0){ moveGuest(g); g.wanderT = rand(4.5, 7.5); } }
+      if(g.req && !G.cops){
+        let m = 1; const p = gpos(g);
+        for(const o of G.guests){
+          const loud = o.gone <= 0 && ((o.req && stage(o) === 2) || o.rowdy > 0);
+          if(o === g || !loud) continue;
+          const q = gpos(o);
+          if(Math.hypot(p.x - q.x, p.y - q.y) < 165*S) m += .4 * (o.contagion || 1) * (o.mad && w.angry ? w.angry : 1);
+        }
+        g.req.t -= dt * m;
+        if(g.req.t <= 0){
+          g.req = null; g.gone = 6; G.combo = 0;
+          addVibe(-g.storm); G.stats.storms++; G.waveStats.storms++;
+          say(p.x, p.y - 30*S, '−' + g.storm + ' vibe', COL.mad, true);
+          banner(g.mad ? 'MITCHELL STORMED OFF' : g.name + ' stormed off', ROSTER.find(r => r.id === g.id).gone, 1.8);
+          sfx.storm(); G.shake = g.mad ? .5 : .25;
+        }
+      }
+    }
+
+    // cans
+    for(const c of G.cans){
+      if(c.state === 'floor'){ c.life += dt; continue; }
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      const decay = Math.exp(-K * dt); c.vx *= decay; c.vy *= decay;
+      c.rot += c.spin * dt * (Math.hypot(c.vx, c.vy) / 600);
+      const sp = Math.hypot(c.vx, c.vy);
+      if(G.puddles.some(p => Math.hypot(c.x - p.x, c.y - p.y) < p.r)){
+        c.vx = c.vy = 0; c.state = 'floor'; c.life = 0;
+        addVibe(-2); G.combo = 0; G.stats.misses++; G.waveStats.misses++;
+        say(c.x, c.y - 16*S, 'Slipped in it', COL.muted); sfx.miss(); continue;
+      }
+      if(c.x < -30 || c.x > W + 30 || c.y < -30){ c.state = 'gone'; miss(c); c.state = 'gone'; continue; }
+      if(sp < 460){
+        const hit = tryCatch(c, 24*S);
+        if(hit){ c.state = 'gone'; resolve(hit.g, c, hit.d); continue; }
+      }
+      if(sp < 28){
+        const hit = tryCatch(c, catchR());
+        if(hit){ c.state = 'gone'; resolve(hit.g, c, hit.d); }
+        else miss(c);
+      }
+    }
+    G.cans = G.cans.filter(c => c.state === 'fly' || (c.state === 'floor' && c.life < 1.4));
+
+    if(G.vibe <= 0){ updateHud(); return lose(); }
+    if(G.time <= 0){ G.time = 0; updateHud(); return endWave(); }
+    updateHud();
+  }
+
+  /* ---------- Rendering ---------- */
+  const STAINS = Array.from({length:9}, () => ({x:Math.random(), y:Math.random()*.85, r:rand(10,26), a:rand(.05,.12)}));
+  function rr(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+
+  function drawDrink(type, x, y, s, rot=0){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    if(type === 'water'){
+      ctx.fillStyle = COL.water; ctx.globalAlpha *= .92;
+      rr(-4.5*s, -8*s, 9*s, 16*s, 3.5*s); ctx.fill();
+      ctx.fillStyle = COL.lite; rr(-2.5*s, -11*s, 5*s, 3.5*s, 1.2*s); ctx.fill();
+    } else {
+      const w = type === 'seltzer' ? 8 : 10;
+      ctx.fillStyle = DRINK[type].color; rr(-w/2*s, -8*s, w*s, 16*s, 2.5*s); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(-w/2*s, -2.5*s, w*s, 3.5*s);
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(w/2*s - 2.5*s, -8*s, 2.5*s, 16*s);
+    }
+    ctx.restore();
+  }
+
+  function drawFloor(){
+    const tile = 30 * S;
+    ctx.fillStyle = '#2c181a'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#3a2124';
+    for(let y = 0, j = 0; y < H; y += tile, j++)
+      for(let x = (j % 2) * tile, i = 0; x < W; x += tile * 2, i++) ctx.fillRect(x, y, tile, tile);
+    for(const s of STAINS){
+      ctx.fillStyle = `rgba(244,169,58,${s.a})`;
+      ctx.beginPath(); ctx.ellipse(s.x*W, s.y*H, s.r*S, s.r*.7*S, 0, 0, Math.PI*2); ctx.fill();
+    }
+    // beer pong table (folding table, crimson cups racked at each end)
+    const tw = W*.36, th = 34*S, tx = W*.5 - tw/2, ty = H*.305 - th/2;
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(tx + 4*S, ty + 6*S, tw, th, 4*S); ctx.fill();
+    ctx.fillStyle = '#5b3a2a'; rr(tx, ty, tw, th, 4*S); ctx.fill();
+    ctx.strokeStyle = 'rgba(243,231,211,.35)'; ctx.lineWidth = 1.5*S;
+    ctx.beginPath(); ctx.moveTo(W*.5, ty + 3*S); ctx.lineTo(W*.5, ty + th - 3*S); ctx.stroke();
+    ctx.fillStyle = 'rgba(243,231,211,.22)'; ctx.font = `${9*S}px ${FONT_D}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('320', W*.5 - tw*.18, ty + th/2); ctx.fillText('LINC', W*.5 + tw*.18, ty + th/2);
+    const cup = 4.2*S;
+    for(const side of [-1, 1]){
+      const bx = side < 0 ? tx + 9*S : tx + tw - 9*S;
+      const rows = [[0],[-1,1],[-2,0,2]];
+      rows.forEach((row, ri) => row.forEach(c => {
+        ctx.fillStyle = '#c1121f'; ctx.beginPath();
+        ctx.arc(bx - side*ri*cup*1.75, ty + th/2 + c*cup*1.05, cup, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath();
+        ctx.arc(bx - side*ri*cup*1.75, ty + th/2 + c*cup*1.05, cup*.45, 0, Math.PI*2); ctx.fill();
+      }));
+    }
+    // red bulb light
+    const g = ctx.createRadialGradient(W/2, H*.25, 10, W/2, H*.3, Math.max(W, H)*.85);
+    g.addColorStop(0, 'rgba(255,80,60,.10)'); g.addColorStop(1, 'rgba(10,0,2,.55)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // string lights along the back wall
+    ctx.strokeStyle = 'rgba(243,231,211,.25)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let x = 0; x <= W; x += 6) ctx.lineTo(x, 7*S + Math.sin(x / W * Math.PI * 4) * 5*S);
+    ctx.stroke();
+    for(let i = 0, x = 12*S; x < W; x += 26*S, i++){
+      const y = 7*S + Math.sin(x / W * Math.PI * 4) * 5*S + 3*S;
+      const on = reduce ? 1 : .55 + .45*Math.sin(G.t*2.2 + i*1.7);
+      ctx.fillStyle = i % 2 ? `rgba(193,18,31,${on})` : `rgba(243,231,211,${on})`;
+      ctx.beginPath(); ctx.arc(x, y, 3*S, 0, Math.PI*2); ctx.fill();
+    }
+    // the bar / pledge station
+    const by = H - 84*S;
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(0, by, W, H - by);
+    ctx.strokeStyle = 'rgba(244,169,58,.25)'; ctx.setLineDash([6*S, 6*S]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(W, by); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(247,234,220,.28)'; ctx.font = `600 ${11*S}px ${FONT_N}`; ctx.textAlign = 'left';
+    ctx.fillText('PLEDGE STATION · NO ACTIVES BEHIND THE LINE', 10*S, by + 16*S);
+    ctx.textAlign = 'right';
+    ctx.fillText('BASEMENT · BLOOMINGTON, IN', W - 10*S, by + 16*S);
+  }
+
+  function drawPuddles(){
+    for(const p of G.puddles){
+      ctx.fillStyle = 'rgba(170,190,90,.5)';
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, p.r*.72, .3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(200,215,120,.45)';
+      ctx.beginPath(); ctx.ellipse(p.x + p.r*.5, p.y - p.r*.2, p.r*.35, p.r*.28, 0, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawGuest(g){
+    if(g.gone > 0){ return; }
+    let {x, y} = gpos(g);
+    const r = 19 * S, st = g.req ? stage(g) : -1;
+    if((st === 2 || g.rowdy > 0) && !reduce){ x += Math.sin(G.t*55) * 2*S; y += Math.cos(G.t*47) * 1.5*S; }
+    else if(!reduce){ y += Math.sin(G.t*2 + g.bob) * 1.5*S; }
+
+    // catch zone
+    if(g.req){
+      ctx.strokeStyle = st === 2 ? 'rgba(255,75,62,.55)' : 'rgba(247,234,220,.28)';
+      ctx.lineWidth = 1.5; ctx.setLineDash([4*S, 5*S]);
+      ctx.beginPath(); ctx.arc(x, y, catchR(), 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(244,169,58,.16)';
+      ctx.beginPath(); ctx.arc(x, y, perfectR(), 0, Math.PI*2); ctx.fill();
+    }
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(x, y + r*.85, r*.95, r*.35, 0, 0, Math.PI*2); ctx.fill();
+    // mad glow
+    if((g.mad && g.req) || g.rowdy > 0){
+      const pulse = .35 + .25*Math.sin(G.t*8);
+      ctx.fillStyle = `rgba(255,75,62,${pulse})`;
+      ctx.beginPath(); ctx.arc(x, y, r*1.45, 0, Math.PI*2); ctx.fill();
+    }
+    // puck
+    ctx.fillStyle = g.shirt; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    ctx.lineWidth = 2.5*S; ctx.strokeStyle = st === 2 ? COL.mad : 'rgba(0,0,0,.35)'; ctx.stroke();
+    ctx.fillStyle = '#1b0f11'; ctx.font = `${16*S}px ${FONT_D}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(g.name[0], x, y + 1*S);
+    // name
+    ctx.font = `700 ${12.5*S}px ${FONT_N}`; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillText(g.name.toUpperCase(), x + 1, y + r + 15*S + 1);
+    ctx.fillStyle = COL.ink; ctx.fillText(g.name.toUpperCase(), x, y + r + 15*S);
+    if(g.rowdy > 0){
+      ctx.fillStyle = COL.mad; ctx.font = `${10.5*S}px ${FONT_D}`;
+      ctx.fillText('ON THE TABLE', x, y - r - 8*S);
+    }
+    if(g.id === 'greg' && g.hadBeer){
+      ctx.fillStyle = COL.muted; ctx.font = `600 ${10.5*S}px ${FONT_N}`;
+      ctx.fillText('HAD HIS ONE', x, y + r + 27*S);
+    }
+    if(g.id === 'fowler' && g.drunk > 0){
+      ctx.fillStyle = g.drunk >= 3 ? COL.mad : COL.muted; ctx.font = `600 ${10.5*S}px ${FONT_N}`;
+      ctx.fillText('●'.repeat(Math.min(g.drunk,3)) + (g.drunk >= 3 ? ' NEEDS WATER' : ''), x, y + r + 27*S);
+    }
+
+    // request bubble
+    if(g.req){
+      const bx = x + r*.9, byy = y - r - 14*S, br = 15*S, f = frac(g);
+      ctx.fillStyle = '#1b0f11'; ctx.beginPath(); ctx.arc(bx, byy, br, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 3.5*S;
+      ctx.beginPath(); ctx.arc(bx, byy, br, 0, Math.PI*2); ctx.stroke();
+      ctx.strokeStyle = st === 0 ? COL.calm : st === 1 ? COL.warn : COL.mad;
+      ctx.beginPath(); ctx.arc(bx, byy, br, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(f,0,1)); ctx.stroke();
+      drawDrink(g.req.drink, bx, byy, .95*S);
+      if(st >= 1){
+        ctx.font = `${(st === 2 ? 15 : 12)*S}px ${FONT_D}`; ctx.fillStyle = st === 2 ? COL.mad : COL.warn;
+        ctx.textAlign = 'left'; ctx.fillText(st === 2 ? '!!' : '!', bx + br + 3*S, byy + 5*S);
+      }
+      if(g.mad && !reduce){
+        ctx.font = `700 ${11*S}px ${FONT_N}`; ctx.fillStyle = 'rgba(255,120,100,.85)'; ctx.textAlign = 'center';
+        const k = (G.t*1.2) % 1;
+        ctx.globalAlpha = 1 - k; ctx.fillText('#@%!', x - r*.9, y - r - 6*S - k*18*S); ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  function drawPimmel(){
+    const p = pim(), r = 20*S;
+    // cooler
+    const cx = p.x + 48*S, cy = p.y - 4*S;
+    ctx.fillStyle = '#e8e3da'; rr(cx - 20*S, cy - 13*S, 40*S, 28*S, 5*S); ctx.fill();
+    ctx.fillStyle = COL.cup; rr(cx - 20*S, cy - 13*S, 40*S, 9*S, 4*S); ctx.fill();
+    ctx.fillStyle = '#1b0f11'; ctx.font = `700 ${12*S}px ${FONT_N}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const n = G.stock[G.sel]; ctx.fillText(n === Infinity ? 'TAP' : n, cx, cy + 6*S);
+    // pledge
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + r*.85, r, r*.35, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = COL.amber; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
+    ctx.lineWidth = 3*S; ctx.strokeStyle = COL.cup; ctx.stroke();
+    // pledge sash
+    ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, r - 1.5*S, 0, Math.PI*2); ctx.clip();
+    ctx.strokeStyle = COL.cup; ctx.lineWidth = 6*S;
+    ctx.beginPath(); ctx.moveTo(p.x - r, p.y - r); ctx.lineTo(p.x + r, p.y + r); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = '#1b0f11'; ctx.font = `${15*S}px ${FONT_D}`; ctx.fillText('P', p.x, p.y + 1*S);
+    ctx.font = `700 ${12*S}px ${FONT_N}`; ctx.fillStyle = COL.ink; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('PIMMEL', p.x, p.y + r + 15*S);
+    // held drink
+    drawDrink(G.sel, p.x - 30*S, p.y - 2*S, 1.1*S, -.2);
+  }
+
+  function drawAim(){
+    if(!drag || G.state !== 'play') return;
+    const a = aimOf(drag);
+    if(!a) return;
+    const p = pim(), len = a.dist * .42;
+    ctx.fillStyle = 'rgba(244,169,58,.85)';
+    for(let d = 22*S; d < len; d += 13*S){
+      const s = 2.6*S * (1 - d/len*.5);
+      ctx.beginPath(); ctx.arc(p.x + a.ux*d, p.y - 14*S + a.uy*d, s, 0, Math.PI*2); ctx.fill();
+    }
+    // power meter
+    const pw = clamp(a.dist / (H*1.05), 0, 1);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(p.x - 60*S, p.y + 30*S, 120*S, 5*S, 3*S); ctx.fill();
+    ctx.fillStyle = COL.amber; rr(p.x - 60*S, p.y + 30*S, 120*S*pw, 5*S, 3*S); ctx.fill();
+  }
+
+  function drawCans(){
+    for(const c of G.cans){
+      ctx.globalAlpha = c.state === 'floor' ? Math.max(0, 1 - c.life/1.4) * .7 : 1;
+      if(c.state === 'fly'){
+        ctx.fillStyle = 'rgba(0,0,0,.3)';
+        ctx.beginPath(); ctx.ellipse(c.x + 3*S, c.y + 9*S, 6*S, 2.5*S, 0, 0, Math.PI*2); ctx.fill();
+      }
+      drawDrink(c.drink, c.x, c.y, 1.1*S, c.state === 'floor' ? 1.5 : c.rot);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawTexts(){
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    for(const t of G.texts){
+      const k = t.t / 1.3;
+      ctx.globalAlpha = 1 - k*k;
+      ctx.font = t.big ? `${14*S}px ${FONT_D}` : `700 ${15*S}px ${FONT_N}`;
+      const tx = clamp(t.x, 70*S, W - 70*S), ty = t.y - k*30*S;
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillText(t.text, tx + 1, ty + 1);
+      ctx.fillStyle = t.color; ctx.fillText(t.text, tx, ty);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawBanner(){
+    if(G.cops){
+      const on = Math.floor(G.t * 4) % 2;
+      ctx.fillStyle = on ? 'rgba(255,40,40,.13)' : 'rgba(60,110,255,.13)';
+      ctx.fillRect(0, 0, W, H);
+    }
+    if(!G.banner) return;
+    const b = G.banner, a = Math.min(1, b.t*4, (b.dur - b.t)*3);
+    ctx.globalAlpha = Math.max(0, a);
+    const y = H * .42;
+    ctx.fillStyle = 'rgba(20,8,10,.78)'; ctx.fillRect(0, y - 34*S, W, b.sub ? 70*S : 50*S);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = G.cops ? COL.ink : COL.amber; ctx.font = `${22*S}px ${FONT_D}`;
+    ctx.fillText(b.text, W/2, y);
+    if(b.sub){
+      ctx.fillStyle = COL.ink; ctx.font = `600 ${14*S}px ${FONT_N}`;
+      wrapText(b.sub, W/2, y + 21*S, W - 40, 16*S);
+    }
+    ctx.globalAlpha = 1;
+  }
+  function wrapText(t, x, y, max, lh){
+    const words = t.split(' '); let line = '', lines = [];
+    for(const w of words){ const test = line ? line + ' ' + w : w; if(ctx.measureText(test).width > max && line){ lines.push(line); line = w; } else line = test; }
+    lines.push(line); lines = lines.slice(0, 2);
+    lines.forEach((l, i) => ctx.fillText(l, x, y + i*lh));
+  }
+  function drawHint(){
+    if(!G.hint || G.state !== 'play' || drag) return;
+    const p = pim(), k = (G.t % 1.6) / 1.6;
+    ctx.globalAlpha = Math.sin(k*Math.PI);
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(p.x - 70*S, p.y - k*90*S, 9*S, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.font = `700 ${13*S}px ${FONT_N}`; ctx.fillStyle = COL.ink; ctx.textAlign = 'center';
+    ctx.fillText('SWIPE UP TO THROW', p.x, p.y - 44*S);
+  }
+
+  function render(){
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.save();
+    if(G.shake > 0 && !reduce) ctx.translate(rand(-4,4)*G.shake*S*3, rand(-4,4)*G.shake*S*3);
+    drawFloor(); drawPuddles();
+    const order = [...G.guests].sort((a,b) => a.y - b.y);
+    for(const g of order) drawGuest(g);
+    drawCans(); drawPimmel(); drawAim(); drawHint(); drawTexts(); drawBanner();
+    ctx.restore();
+  }
+
+  /* ---------- Loop ---------- */
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if(W > 0 && H > 0){ update(dt); render(); }
+    requestAnimationFrame(frame);
+  }
+  document.addEventListener('visibilitychange', () => { last = performance.now(); drag = null; });
+
+  newGame(); showMenu();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
