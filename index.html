@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#1b0f11">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
-<title>320 N Lincoln</title>
+<title>320 N. Lincoln</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Layout: one-screen portrait game. HUD strip on top, checkered basement floor (canvas) in the middle, the bar shelf of drinks at the bottom. Single committed dark look: a basement lit by one red bulb. */
+/* Layout: one-screen portrait game. HUD strip on top, checkered house-party floor (canvas) in the middle, the bar shelf of drinks at the bottom. Single committed dark look: a living room lit by one red bulb. */
 :root{
   --bg:#1b0f11;
   --panel:#2a171a;
@@ -172,10 +172,10 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     {id:'zan', name:'Zan', shirt:'#4fb3a9', pat:9, tip:3, storm:15, want:() => 'beer',
       blurb:'Light beer, every time. The baseline.', gone:'Zan went looking for a better party.'},
     {id:'arshan', name:'Arshan', shirt:'#c58cf2', pat:10, tip:4, storm:15, wander:true,
-      want:() => Math.random() < .7 ? 'seltzer' : 'beer',
-      blurb:'Mostly seltzer. Never stands still, so lead your throw.', gone:'Arshan left with the seltzer crowd.'},
-    {id:'rick', name:'Rick', shirt:'#f4a93a', pat:6, tip:7, storm:15, want:() => 'beer',
-      blurb:'Short fuse, best tipper in the house.', gone:'Rick is telling the actives about you.'},
+      want:() => Math.random() < .7 ? 'seltzer' : 'beer', quips:['Turn up the beats, Pimmel!'], quipEvery:[9,16],
+      blurb:'Mostly seltzer. Never stands still, so lead your throw. Has opinions about the music.', gone:'Arshan left with the seltzer crowd.'},
+    {id:'rick', name:'Rick', shirt:'#f4a93a', pat:6, tip:7, storm:15, want:() => 'beer', quips:['Dude, yo.'], quipEvery:[7,13],
+      blurb:'Short fuse, best tipper in the house. Dude, yo.', gone:'Rick is telling everyone at the party about you.'},
     {id:'fowler', name:'Fowler', shirt:'#6f9cff', pat:9, tip:4, storm:15,
       want:g => g.drunk >= 3 ? 'water' : 'beer',
       blurb:'After three beers he needs water. Ignore that at your own risk.', gone:'Fowler wandered off.'},
@@ -217,7 +217,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     G.guests = ROSTER.map(d => {
       const si = START_SLOTS[d.id], s = SLOTS[si];
       return {...d, slot:si, x:s[0], y:s[1], tx:s[0], ty:s[1], req:null,
-        cool:1 + Math.random()*2, gone:0, drunk:0, rowdy:0, hadBeer:false, wanderT:4 + Math.random()*3, bob:Math.random()*6};
+        cool:1 + Math.random()*2, gone:0, drunk:0, rowdy:0, hadBeer:false, quip:null, quipT:rand(3, 9), wanderT:4 + Math.random()*3, bob:Math.random()*6};
     });
     updateShelf(); updateHud();
   }
@@ -300,13 +300,13 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     G.state = 'menu';
     const b = best();
     ov.innerHTML = `<div class="card">
-      <div class="plaque"><span class="num">320</span><span class="st">N&nbsp;Lincoln&nbsp;St</span><span class="city">Bloomington, Indiana</span></div>
-      <p class="sub">Bloomington, Indiana. Pledge Week, Night 1. Pimmel is on drinks from pregame until the Kirkwood bars let out. Keep the party alive until 2 a.m.</p>
+      <div class="plaque"><span class="num">320</span><span class="st">N.&nbsp;Lincoln</span><span class="city">Bloomington, Indiana</span></div>
+      <p class="sub">House party at 320 N. Lincoln. Pimmel is on drinks from pregame until the Kirkwood bars let out. Keep the party alive until 2 a.m.</p>
       <ul class="how">
         <li><b>1</b><span>Pick a drink from the cooler below.</span></li>
         <li><b>2</b><span>Swipe up from anywhere on the floor to throw it. Longer swipe, farther throw.</span></li>
         <li><b>3</b><span>Land it in the ring. Center of the ring is a perfect toss and a bigger tip.</span></li>
-        <li><b>4</b><span>Misses cost cans. Storm-offs cost vibe. Vibe hits zero and you get dropped.</span></li>
+        <li><b>4</b><span>Misses cost cans. Storm-offs cost vibe. Vibe hits zero and the party dies.</span></li>
       </ul>
       <div class="roster">${rosterHtml()}</div>
       ${b ? `<div class="best">Best night: $${b}</div>` : ''}
@@ -338,14 +338,14 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     const ws = G.waveStats;
     ov.innerHTML = `<div class="card">
       <span class="label">${w.clock} · Wave ${G.wave+1} of ${WAVES.length} survived</span>
-      <h2>${ws.storms === 0 ? 'Nobody stormed off. Suspicious.' : ws.storms > 2 ? 'Rough wave, pledge.' : 'Still standing.'}</h2>
+      <h2>${ws.storms === 0 ? 'Nobody stormed off. Suspicious.' : ws.storms > 2 ? 'Rough wave, Pimmel.' : 'Still standing.'}</h2>
       <div class="stats">
         <div><span class="label">Served</span><b>${ws.served}</b></div>
         <div><span class="label">Perfect</span><b>${ws.perfect}</b></div>
         <div><span class="label">Cans wasted</span><b>${ws.misses}</b></div>
         <div><span class="label">Tips this wave</span><b>$${ws.tips}</b></div>
       </div>
-      <p class="sub">${G.wave === 1 ? 'The keg kicked. A brother made a half-hearted liquor store run' : 'A brother made a liquor store run'}: +${rs.beer} Light, +${rs.seltzer} Seltzer. Vibe +10.</p>
+      <p class="sub">${G.wave === 1 ? 'The keg kicked. Somebody made a half-hearted liquor store run' : 'Somebody made a liquor store run'}: +${rs.beer} Light, +${rs.seltzer} Seltzer. Vibe +10.</p>
       <div class="note"><strong>${nx.clock}:</strong> ${nx.intro}</div>
       <button class="btn" id="go">Wave ${G.wave+2}</button>
     </div>`;
@@ -364,10 +364,10 @@ p{margin:0;line-height:1.45;color:var(--ink)}
   function win(){
     G.state = 'over'; setBest(G.tips);
     ov.innerHTML = `<div class="card">
-      <span class="label">2:00 AM · 320 N Lincoln St · Bloomington</span>
-      <h2>Night 1 survived. Pimmel lives to pledge another day.</h2>
+      <span class="label">2:00 AM · 320 N. Lincoln · Bloomington</span>
+      <h2>The party survived. Pimmel lives to pour another day.</h2>
       ${finalStats()}
-      <p class="sub">${G.stats.storms === 0 ? 'Not one storm-off. The actives are concerned you might be competent.' : 'Mitchell is still mad. Mark is asleep on the couch. Greg left at 11. Normal night on Lincoln.'}</p>
+      <p class="sub">${G.stats.storms === 0 ? 'Not one storm-off. The whole house is concerned you might be competent.' : 'Mitchell is still mad. Mark is asleep on the couch. Greg left at 11. Normal night on Lincoln.'}</p>
       <button class="btn" id="go">Run it back</button>
     </div>`;
     ov.hidden = false;
@@ -377,7 +377,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     G.state = 'over'; setBest(G.tips); sfx.storm();
     ov.innerHTML = `<div class="card">
       <span class="label">Wave ${G.wave+1} · The party died</span>
-      <h2>Pimmel got dropped.</h2>
+      <h2>The party died. Everyone blames Pimmel.</h2>
       ${finalStats()}
       <p class="sub">${G.stock.beer <= 0 ? 'You ran the cooler dry. Accuracy is a resource.' : 'Watch the yellers. Anger spreads to whoever is standing next to them.'}</p>
       <button class="btn" id="go">Beg for another chance</button>
@@ -508,6 +508,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     G.texts = G.texts.filter(t => t.t < 1.3);
     if(G.banner){ G.banner.t += dt; if(G.banner.t > G.banner.dur) G.banner = null; }
     G.shake = Math.max(0, G.shake - dt);
+    G.beats = Math.max(0, (G.beats || 0) - dt);
     for(const g of G.guests){ g.x += (g.tx - g.x) * Math.min(1, dt*2.2); g.y += (g.ty - g.y) * Math.min(1, dt*2.2); }
     if(G.state !== 'play') return;
 
@@ -530,6 +531,15 @@ p{margin:0;line-height:1.45;color:var(--ink)}
 
     // guests
     for(const g of G.guests){
+      if(g.quip){ g.quip.t += dt; if(g.quip.t > 2.4) g.quip = null; }
+      if(g.quips && g.gone <= 0){
+        g.quipT -= dt;
+        if(g.quipT <= 0){
+          g.quip = {text:pick(g.quips), t:0}; g.quipT = rand(g.quipEvery[0], g.quipEvery[1]);
+          if(g.id === 'arshan') G.beats = 3;
+          tone(g.id === 'rick' ? 300 : 520, .08, 'triangle', .035); tone(g.id === 'rick' ? 240 : 660, .1, 'triangle', .03, 0, .08);
+        }
+      }
       if(g.gone > 0){ g.gone -= dt; continue; }
       if(g.rowdy > 0) g.rowdy -= dt;
       if(!g.req && g.rowdy <= 0){ g.cool -= dt; }
@@ -642,7 +652,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     ctx.stroke();
     for(let i = 0, x = 12*S; x < W; x += 26*S, i++){
       const y = 7*S + Math.sin(x / W * Math.PI * 4) * 5*S + 3*S;
-      const on = reduce ? 1 : .55 + .45*Math.sin(G.t*2.2 + i*1.7);
+      const on = reduce ? 1 : G.beats > 0 ? (Math.floor(G.t*8 + i) % 2 ? 1 : .25) : .55 + .45*Math.sin(G.t*2.2 + i*1.7);
       ctx.fillStyle = i % 2 ? `rgba(193,18,31,${on})` : `rgba(243,231,211,${on})`;
       ctx.beginPath(); ctx.arc(x, y, 3*S, 0, Math.PI*2); ctx.fill();
     }
@@ -652,9 +662,9 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     ctx.strokeStyle = 'rgba(244,169,58,.25)'; ctx.setLineDash([6*S, 6*S]); ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(W, by); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = 'rgba(247,234,220,.28)'; ctx.font = `600 ${11*S}px ${FONT_N}`; ctx.textAlign = 'left';
-    ctx.fillText('PLEDGE STATION · NO ACTIVES BEHIND THE LINE', 10*S, by + 16*S);
+    ctx.fillText('KITCHEN · DRINKS STATION', 10*S, by + 16*S);
     ctx.textAlign = 'right';
-    ctx.fillText('BASEMENT · BLOOMINGTON, IN', W - 10*S, by + 16*S);
+    ctx.fillText('HOUSE PARTY · 320 N. LINCOLN', W - 10*S, by + 16*S);
   }
 
   function drawPuddles(){
@@ -712,6 +722,20 @@ p{margin:0;line-height:1.45;color:var(--ink)}
       ctx.fillText('●'.repeat(Math.min(g.drunk,3)) + (g.drunk >= 3 ? ' NEEDS WATER' : ''), x, y + r + 27*S);
     }
 
+    // speech bubble
+    if(g.quip){
+      const k = g.quip.t, a = Math.min(1, k*6, (2.4 - k)*4);
+      ctx.save(); ctx.globalAlpha = Math.max(0, a);
+      ctx.font = `700 ${13*S}px ${FONT_N}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(g.quip.text).width + 16*S, th = 22*S;
+      const qx = clamp(x - r*.4, tw/2 + 4, W - tw/2 - 4), qy = Math.max(th/2 + 4, y - r - 40*S - k*4*S);
+      ctx.fillStyle = '#f3e7d3'; rr(qx - tw/2, qy - th/2, tw, th, 8*S); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(clamp(x, qx - tw/2 + 8*S, qx + tw/2 - 8*S) - 5*S, qy + th/2 - 1);
+      ctx.lineTo(clamp(x, qx - tw/2 + 8*S, qx + tw/2 - 8*S) + 5*S, qy + th/2 - 1);
+      ctx.lineTo(clamp(x, qx - tw/2 + 8*S, qx + tw/2 - 8*S), qy + th/2 + 7*S); ctx.fill();
+      ctx.fillStyle = '#1b0f11'; ctx.fillText(g.quip.text, qx, qy + 1);
+      ctx.restore();
+    }
     // request bubble
     if(g.req){
       const bx = x + r*.9, byy = y - r - 14*S, br = 15*S, f = frac(g);
