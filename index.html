@@ -186,10 +186,13 @@ p{margin:0;line-height:1.45;color:var(--ink)}
       blurb:'Has had way too much. Water only, and he will not stand still. Give him a beer and he climbs the pong table.', gone:'Mark passed out on the couch.'},
     {id:'greg', name:'Greg', shirt:'#e9dcc4', pat:14, tip:1, storm:12, slow:3,
       want:g => g.hadBeer ? 'water' : 'beer',
-      blurb:'One beer a night. Nail that one and he tips like it is graduation. A second beer insults him.', gone:'Greg went home. It is a school night for Greg.'}
+      blurb:'One beer a night. Nail that one and he tips like it is graduation. A second beer insults him.', gone:'Greg went home. It is a school night for Greg.'},
+    {id:'kyle', name:'Kyle', shirt:'#ffd166', pat:99, tip:0, storm:0, noOrder:true, wander:true, want:() => 'water',
+      quips:['Has anyone seen my gum?'], quipEvery:[7,9],
+      blurb:'Not drinking. Wandering the room looking for his gum. Do not throw at Kyle.', gone:''}
   ];
   const SLOTS = [[.15,.13],[.5,.1],[.85,.14],[.27,.31],[.73,.3],[.13,.48],[.5,.46],[.87,.49],[.3,.63],[.72,.64]];
-  const START_SLOTS = {zan:0, arshan:2, rick:3, fowler:4, mitchell:6, mark:9, greg:1};
+  const START_SLOTS = {zan:0, arshan:2, rick:3, fowler:4, mitchell:6, mark:9, greg:1, kyle:8};
   const WAVES = [
     {dur:40, max:2, every:3.2, pat:1.00, restock:{beer:14, seltzer:4}, clock:'10:00 PM',
       intro:'Pregame. Light crowd. Find your arm before the house fills up.'},
@@ -367,7 +370,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
       <span class="label">2:00 AM · 320 N. Lincoln · Bloomington</span>
       <h2>The party survived. Pimmel lives to pour another day.</h2>
       ${finalStats()}
-      <p class="sub">${G.stats.storms === 0 ? 'Not one storm-off. The whole house is concerned you might be competent.' : 'Mitchell is still mad. Mark is asleep on the couch. Greg left at 11. Normal night on Lincoln.'}</p>
+      <p class="sub">${G.stats.storms === 0 ? 'Not one storm-off. The whole house is concerned you might be competent.' : 'Mitchell is still mad. Mark is asleep on the couch. Greg left at 11. Kyle never found his gum. Normal night on Lincoln.'}</p>
       <button class="btn" id="go">Run it back</button>
     </div>`;
     ov.hidden = false;
@@ -432,7 +435,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     const w = WAVES[G.wave];
     const active = G.guests.filter(g => g.req).length;
     if(active >= w.max) return;
-    const idle = G.guests.filter(g => !g.req && g.gone <= 0 && g.cool <= 0);
+    const idle = G.guests.filter(g => !g.noOrder && !g.req && g.gone <= 0 && g.cool <= 0);
     if(!idle.length) return;
     // Mitchell pushes in more often late in the night
     const g = (w.angry && Math.random() < .35 && idle.find(x => x.mad)) || pick(idle);
