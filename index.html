@@ -189,10 +189,21 @@ p{margin:0;line-height:1.45;color:var(--ink)}
       blurb:'One beer a night. Nail that one and he tips like it is graduation. A second beer insults him.', gone:'Greg went home. It is a school night for Greg.'},
     {id:'kyle', name:'Kyle', shirt:'#ffd166', pat:99, tip:0, storm:0, noOrder:true, wander:true, want:() => 'water',
       quips:['Has anyone seen my gum?'], quipEvery:[7,9],
-      blurb:'Not drinking. Wandering the room looking for his gum. Do not throw at Kyle.', gone:''}
+      blurb:'Not drinking. Wandering the room looking for his gum. Do not throw at Kyle.', gone:''},
+    {id:'snaggle', name:'Snaggletooth', initial:'S', shirt:'#ff9f68', pat:8, tip:3, storm:15, ring:1.45,
+      want:() => Math.random() < .75 ? 'beer' : 'seltzer',
+      blurb:'Catches anything near her. Biggest catch ring at the party, so she is your safe throw when it gets loud.', gone:'Snaggletooth left for a party on Atwater.'},
+    {id:'fur', name:'The Fur', initial:'F', shirt:'#b08968', pat:11, tip:5, storm:22, fur:true, want:() => 'seltzer',
+      blurb:'Seltzer only. Patient, but when she leaves, half the room follows her out.', gone:'The Fur left. So did her whole group.'},
+    {id:'jill1', name:'Jill 1', initial:'J', shirt:'#ff7eb6', pat:9, tip:3, storm:12, pair:'jill2',
+      want:() => Math.random() < .5 ? 'seltzer' : 'beer',
+      blurb:'Orders with Jill 2, always the same drink. Serve both within 4 seconds for a bonus.', gone:'Both Jills left. Together. Obviously.'},
+    {id:'jill2', name:'Jill 2', initial:'J', shirt:'#ff7eb6', pat:9, tip:3, storm:12, pair:'jill1',
+      want:() => 'seltzer',
+      blurb:'See Jill 1. Nobody at the party knows which is which.', gone:'Both Jills left. Together. Obviously.'}
   ];
-  const SLOTS = [[.15,.13],[.5,.1],[.85,.14],[.27,.31],[.73,.3],[.13,.48],[.5,.46],[.87,.49],[.3,.63],[.72,.64]];
-  const START_SLOTS = {zan:0, arshan:2, rick:3, fowler:4, mitchell:6, mark:9, greg:1, kyle:8};
+  const SLOTS = [[.12,.11],[.37,.11],[.63,.11],[.88,.11],[.13,.29],[.87,.29],[.12,.46],[.37,.46],[.63,.46],[.88,.46],[.2,.62],[.5,.62],[.8,.62],[.35,.76],[.65,.76]];
+  const START_SLOTS = {zan:0, arshan:1, snaggle:2, greg:3, rick:4, fowler:5, jill1:6, jill2:7, mitchell:8, fur:9, mark:11, kyle:13};
   const WAVES = [
     {dur:40, max:2, every:3.2, pat:1.00, restock:{beer:14, seltzer:4}, clock:'10:00 PM',
       intro:'Pregame. Light crowd. Find your arm before the house fills up.'},
@@ -200,9 +211,9 @@ p{margin:0;line-height:1.45;color:var(--ink)}
       intro:'Half of Memorial Stadium just walked in the front door.'},
     {dur:45, max:4, every:2.3, pat:.86, restock:{beer:16, seltzer:4}, clock:'12:30 AM',
       intro:'The keg kicked. You only got half a restock. Do not waste cans.'},
-    {dur:50, max:4, every:2.0, pat:.80, restock:{beer:18, seltzer:5}, cops:{at:22, dur:6}, clock:'1:15 AM',
+    {dur:50, max:5, every:1.9, pat:.80, restock:{beer:18, seltzer:5}, cops:{at:22, dur:6}, clock:'1:15 AM',
       intro:'Noise complaint. When Bloomington PD knocks, stop throwing.'},
-    {dur:55, max:6, every:1.5, pat:.72, angry:1.6, clock:'1:45 AM',
+    {dur:55, max:7, every:1.4, pat:.72, angry:1.6, clock:'1:45 AM',
       intro:'The Kirkwood bars just let out and everyone came here. Mitchell found out who drank his last beer.'}
   ];
   const START_STOCK = {beer:18, seltzer:6};
@@ -297,7 +308,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
   function best(){ try { return +localStorage.getItem('n320-best') || 0; } catch(e){ return 0; } }
   function setBest(v){ try { if(v > best()) localStorage.setItem('n320-best', v); } catch(e){} }
   function rosterHtml(){
-    return ROSTER.map(r => `<div class="who"><div class="puck" style="background:${r.shirt}">${r.name[0]}</div><div><strong>${r.name}.</strong> <span>${r.blurb}</span></div></div>`).join('');
+    return ROSTER.map(r => `<div class="who"><div class="puck" style="background:${r.shirt}">${r.initial || r.name[0]}</div><div><strong>${r.name}.</strong> <span>${r.blurb}</span></div></div>`).join('');
   }
   function showMenu(){
     G.state = 'menu';
@@ -441,6 +452,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     const g = (w.angry && Math.random() < .35 && idle.find(x => x.mad)) || pick(idle);
     const max = g.pat * w.pat * (G.wave === 0 ? 1.15 : 1);
     g.req = {drink:g.want(g), max, t:max * (g.startFrac || 1)};
+    if(g.pair){ const o = G.guests.find(x => x.id === g.pair); if(o && !o.req && o.gone <= 0) o.req = {drink:g.req.drink, max, t:max}; }
   }
   function moveGuest(g){
     const used = new Set(G.guests.filter(o => o !== g).map(o => o.slot));
@@ -452,11 +464,11 @@ p{margin:0;line-height:1.45;color:var(--ink)}
   function perfectR(){ return 12 * S; }
 
   function tryCatch(c, r){
-    let best = null, bd = r;
+    let best = null, bs = 1, bd = 0;
     for(const g of G.guests){
       if(!g.req || g.gone > 0) continue;
-      const p = gpos(g), d = Math.hypot(c.x - p.x, c.y - p.y);
-      if(d < bd){ bd = d; best = g; }
+      const p = gpos(g), d = Math.hypot(c.x - p.x, c.y - p.y), sc = d / (r * (g.ring || 1));
+      if(sc < bs){ bs = sc; bd = d; best = g; }
     }
     return best ? {g:best, d:bd} : null;
   }
@@ -491,11 +503,17 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     G.tips += tip; G.waveStats.tips += tip;
     addVibe((perfect ? 4 : 2) + (g.mad ? 3 : 0) + (g.calm || 0));
     if(g.id === 'greg' && c.drink === 'beer') g.hadBeer = true;
+    let pairTxt = '';
+    if(g.pair){
+      const o = G.guests.find(x => x.id === g.pair);
+      if(o && o.lastServed && G.t - o.lastServed < 4){ G.tips += 5; G.waveStats.tips += 5; addVibe(3); pairTxt = '  DOUBLE JILL +$5'; o.lastServed = 0; }
+      else g.lastServed = G.t;
+    }
     G.stats.served++; G.waveStats.served++;
     if(perfect){ G.stats.perfect++; G.waveStats.perfect++; }
     if(g.id === 'fowler'){ if(c.drink === 'beer') g.drunk++; else if(c.drink === 'water') g.drunk = 0; }
     g.req = null; g.cool = rand(1.5, 4) * (g.slow || 1);
-    const label = (perfect ? 'PERFECT  ' : '') + '+$' + tip + (G.combo > 2 ? '  x' + G.combo : '');
+    const label = (perfect ? 'PERFECT  ' : '') + '+$' + tip + (G.combo > 2 ? '  x' + G.combo : '') + pairTxt;
     say(p.x, p.y - 34*S, label, perfect ? COL.amber : COL.calm, perfect);
     (perfect ? sfx.perfect : sfx.catch)();
   }
@@ -558,6 +576,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
         g.req.t -= dt * m;
         if(g.req.t <= 0){
           g.req = null; g.gone = 6; G.combo = 0;
+          if(g.pair){ const o = G.guests.find(x => x.id === g.pair); if(o){ o.req = null; o.gone = 6; } }
           addVibe(-g.storm); G.stats.storms++; G.waveStats.storms++;
           say(p.x, p.y - 30*S, '−' + g.storm + ' vibe', COL.mad, true);
           banner(g.mad ? 'MITCHELL STORMED OFF' : g.name + ' stormed off', ROSTER.find(r => r.id === g.id).gone, 1.8);
@@ -690,7 +709,7 @@ p{margin:0;line-height:1.45;color:var(--ink)}
     if(g.req){
       ctx.strokeStyle = st === 2 ? 'rgba(255,75,62,.55)' : 'rgba(247,234,220,.28)';
       ctx.lineWidth = 1.5; ctx.setLineDash([4*S, 5*S]);
-      ctx.beginPath(); ctx.arc(x, y, catchR(), 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(x, y, catchR() * (g.ring || 1), 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(244,169,58,.16)';
       ctx.beginPath(); ctx.arc(x, y, perfectR(), 0, Math.PI*2); ctx.fill();
     }
@@ -704,10 +723,14 @@ p{margin:0;line-height:1.45;color:var(--ink)}
       ctx.beginPath(); ctx.arc(x, y, r*1.45, 0, Math.PI*2); ctx.fill();
     }
     // puck
+    if(g.fur){
+      ctx.fillStyle = '#8a6a50';
+      for(let i = 0; i < 16; i++){ const a = i / 16 * Math.PI * 2; ctx.beginPath(); ctx.arc(x + Math.cos(a)*r, y + Math.sin(a)*r, 4.5*S, 0, Math.PI*2); ctx.fill(); }
+    }
     ctx.fillStyle = g.shirt; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
     ctx.lineWidth = 2.5*S; ctx.strokeStyle = st === 2 ? COL.mad : 'rgba(0,0,0,.35)'; ctx.stroke();
     ctx.fillStyle = '#1b0f11'; ctx.font = `${16*S}px ${FONT_D}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(g.name[0], x, y + 1*S);
+    ctx.fillText(g.initial || g.name[0], x, y + 1*S);
     // name
     ctx.font = `700 ${12.5*S}px ${FONT_N}`; ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillText(g.name.toUpperCase(), x + 1, y + r + 15*S + 1);

@@ -1,6 +1,6 @@
 # 320 N. Lincoln
 
-A browser party game set at a house party at 320 N. Lincoln in Bloomington, Indiana. Pimmel has to keep the party alive from pregame until the Kirkwood bars let out, flicking drinks to Zan, Arshan, Rick, Fowler, Mark, Greg and a very mad Mitchell, while Kyle looks for his gum.
+A browser party game set at a house party at 320 N. Lincoln in Bloomington, Indiana. Pimmel has to keep the party alive from pregame until the Kirkwood bars let out, flicking drinks to Zan, Arshan, Rick, Fowler, Mark, Greg, Snaggletooth, The Fur, Jill 1, Jill 2 and a very mad Mitchell, while Kyle looks for his gum.
 
 **Play:** https://kpoconno.github.io/320Nlincoln/
 
